@@ -373,9 +373,10 @@
         }
         const A_fit = Math.sqrt(a * a + b * b);
 
-        // [2.5][4.5] sufixo "(norm.)"
+        // Exibe dBFS relativo ao fundo de escala, preservando A_fit normalizado para a função.
+        const amplitudeDbfs = 20 * Math.log10(Math.max(Math.min(A_fit, 1), 1e-5));
         freqValue.textContent = `${freqFromZC.toFixed(1)} Hz`;
-        amplitudeValue.textContent = `${A_fit.toFixed(3)} (0–1)`;
+        amplitudeValue.textContent = `${amplitudeDbfs.toFixed(1)} dBFS`;
         periodValue.textContent = `${(1000 / freqFromZC).toFixed(2)} ms`;
 
         // [4.3] toggle: mantém botão visível para alternar
