@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Ondas Sonoras</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="topbar">
+            <h1>🎛️ Analisador de Ondas</h1>
+            <div class="controls">
+                <!-- [4.7] aria-label nos botões -->
+                <button id="startBtn" title="Iniciar captura do microfone"
+                        aria-label="Iniciar captura do microfone">
+                    🎙 <span aria-hidden="true">Iniciar captura</span>
+                </button>
+                <button id="stopBtn" disabled title="Parar a captura e analisar"
+                        aria-label="Parar captura e analisar">
+                    ⏸ <span aria-hidden="true">Parar</span>
+                </button>
+                <button id="clearBtn" title="Limpar gráfico e resultados"
+                        aria-label="Limpar gráfico e resultados">
+                    🗑 <span aria-hidden="true">Limpar</span>
+                </button>
+            </div>
+            <div class="zoom-controls">
+                <button id="zoomOutBtn" title="Zoom out" aria-label="Zoom out">−</button>
+                <span id="zoomLevel" aria-live="polite">1.0×</span>
+                <button id="zoomInBtn" title="Zoom in" aria-label="Zoom in">+</button>
+                <button id="zoomResetBtn" title="Resetar zoom" aria-label="Resetar zoom">⟲</button>
+            </div>
+            <!-- [4.7] aria-live para leitores de tela -->
+            <div id="statusMsg" class="status-badge" role="status" aria-live="polite">🔇 Pronto</div>
+        </header>
+
+        <main class="stage">
+            <div class="canvas-wrapper">
+                <!-- [4.6][4.7][7.1] canvas com aria-label e tabindex para teclado -->
+                <canvas id="waveCanvas" width="800" height="400"
+                        tabindex="0"
+                        aria-label="Forma de onda do sinal de áudio capturado. Use setas esquerda/direita para mover e +/− para zoom."></canvas>
+            </div>
+
+            <aside class="sidebar">
+                <div id="resultsPanel" class="results-panel visible">
+                    <div class="result-item">
+                        <span class="result-label">📊 Frequência:</span>
+                        <span id="freqValue" class="result-value">— Hz</span>
+                    </div>
+                    <!-- [2.5][4.5] rótulo de amplitude mais claro com tooltip explicativo -->
+                    <div class="result-item">
+                        <span class="result-label"
+                              title="Valor normalizado entre 0 e 1 relativo ao fundo de escala digital do ADC. Não é Volts nem dBFS.">
+                            📏 Amplitude (norm.):
+                        </span>
+                        <span id="amplitudeValue" class="result-value">—</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">⏱ Período (T):</span>
+                        <span id="periodValue" class="result-value">— ms</span>
+                    </div>
+                    <div class="result-item func-item">
+                        <span class="result-label">🧮 Função:</span>
+                        <!-- [4.3] toggle mostrar/ocultar -->
+                        <button id="showFunctionBtn" class="function-toggle" type="button" hidden>
+                            Mostrar função
+                        </button>
+                        <span id="funcValue" class="result-value function-line" hidden></span>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
