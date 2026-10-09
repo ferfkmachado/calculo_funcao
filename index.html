@@ -37,6 +37,8 @@
 
         <main class="stage">
             <div class="canvas-wrapper">
+                <button id="toggleWaveBtn" class="wave-toggle" type="button" aria-pressed="false">Ocultar onda</button>
+                <div id="functionOverlay" class="function-overlay" role="status" aria-live="polite" hidden></div>
                 <!-- [4.6][4.7][7.1] canvas com aria-label e tabindex para teclado -->
                 <canvas id="waveCanvas" width="800" height="400"
                         tabindex="0"
@@ -52,8 +54,8 @@
                     <!-- [2.5][4.5] rótulo de amplitude mais claro com tooltip explicativo -->
                     <div class="result-item">
                         <span class="result-label"
-                              title="Valor normalizado entre 0 e 1 relativo ao fundo de escala digital do ADC. Não é Volts nem dBFS.">
-                            📏 Amplitude (norm.):
+                              title="Amplitude de pico normalizada de 0 a 1 relativa ao fundo de escala do microfone; não é Volts.">
+                            📏 Amplitude (0–1):
                         </span>
                         <span id="amplitudeValue" class="result-value">—</span>
                     </div>

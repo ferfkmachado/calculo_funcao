@@ -26,6 +26,8 @@
     const periodValue      = document.getElementById('periodValue');
     const showFunctionBtn  = document.getElementById('showFunctionBtn');
     const funcValue        = document.getElementById('funcValue');
+    const toggleWaveBtn    = document.getElementById('toggleWaveBtn');
+    const functionOverlay  = document.getElementById('functionOverlay');
 
     // Web Audio API
     let audioContext   = null;
@@ -64,6 +66,7 @@
 
     // [1.4] throttle de redesenho
     let redrawScheduled = false;
+    let waveVisible = true;
 
     // ==================== CANVAS / DPR ====================
     // [4.6][7.1] ajusta o canvas ao tamanho real * devicePixelRatio
@@ -126,19 +129,56 @@
     // ==================== DESENHO ====================
     // [1.1] quadraticCurveTo usando ponto atual como controle e médio como destino
     // [5.4] desliga glow em zoom alto
+    function applyDisplayBiquad(input, cutoffHz, type, sampleRate) {
+        const omega = 2 * Math.PI * cutoffHz / sampleRate;
+        const cos = Math.cos(omega);
+        const alpha = Math.sin(omega) / (2 * Math.SQRT1_2);
+        const a0 = 1 + alpha;
+        const b0 = type === 'highpass' ? (1 + cos) / (2 * a0) : (1 - cos) / (2 * a0);
+        const b1 = type === 'highpass' ? -(1 + cos) / a0 : (1 - cos) / a0;
+        const b2 = b0;
+        const a1 = -2 * cos / a0;
+        const a2 = (1 - alpha) / a0;
+        const output = new Float32Array(input.length);
+        let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        for (let i = 0; i < input.length; i++) {
+            const x0 = input[i];
+            const y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+            output[i] = y0;
+            x2 = x1; x1 = x0; y2 = y1; y1 = y0;
+        }
+        return output;
+    }
+
     function drawWaveformWindowed(dataArray, color = '#00ffcc', lineWidth = 2.5, glow = true) {
         if (!dataArray || dataArray.length === 0) return;
         const { w, h } = getCanvasSize();
         const N = dataArray.length;
 
-        const visibleCount = Math.max(2, Math.floor(N / zoomFactor));
+        const sampleRate = frozenSampleRate || audioContext?.sampleRate || 44100;
+        // Filtros apenas visuais: corta graves abaixo de 150 Hz e suaviza acima de 650 Hz.
+        const normalizedData = Float32Array.from(dataArray, value => (value - 128) / 128);
+        const withoutBass = applyDisplayBiquad(normalizedData, 150, 'highpass', sampleRate);
+        const smoothData = applyDisplayBiquad(withoutBass, 650, 'lowpass', sampleRate);
+        const displayData = Float32Array.from(smoothData, value => 128 + value * 128);
+
+        // Janela de 20 ms: poucas oscilações grandes e arredondadas, como na referência.
+        const windowSamples = Math.min(N, Math.max(2, Math.round(sampleRate * 0.02)));
+        const visibleCount = Math.max(2, Math.floor(windowSamples / zoomFactor));
         const maxStart = N - visibleCount;
         const start = Math.max(0, Math.min(maxStart, Math.floor(panOffset * maxStart)));
         const end = Math.min(N, start + visibleCount);
         const visibleSpan = end - start;
         const step = w / visibleSpan;
 
-        const yOf = i => (dataArray[i] / 128.0 * h) / 2;
+        // Ganho automático apenas para o desenho: mantém a curva grande mesmo com sinal fraco.
+        // O limiar evita ampliar ruído quando não há som; frequência/amplitude medidas não mudam.
+        let visiblePeak = 0;
+        for (let i = start; i < end; i++) {
+            visiblePeak = Math.max(visiblePeak, Math.abs((displayData[i] - 128) / 128));
+        }
+        const visualGain = visiblePeak > 0.005 ? 0.32 / visiblePeak : 1;
+        const yOf = i => h / 2 - ((displayData[i] - 128) / 128) * visualGain * h;
 
         ctx.save();
         if (glow && zoomFactor < 8) {
@@ -335,7 +375,7 @@
 
         // [2.5][4.5] sufixo "(norm.)"
         freqValue.textContent = `${freqFromZC.toFixed(1)} Hz`;
-        amplitudeValue.textContent = `${A_fit.toFixed(3)} (norm.)`;
+        amplitudeValue.textContent = `${A_fit.toFixed(3)} (0–1)`;
         periodValue.textContent = `${(1000 / freqFromZC).toFixed(2)} ms`;
 
         // [4.3] toggle: mantém botão visível para alternar
@@ -345,6 +385,7 @@
             'A é a amplitude de pico normalizada (0..1) relativa ao fundo de escala digital; ' +
             'x é o tempo em segundos.';
         funcValue.hidden = true;
+        functionOverlay.hidden = true;
         showFunctionBtn.hidden = false;
         showFunctionBtn.textContent = 'Mostrar função';
 
@@ -363,6 +404,7 @@
         funcValue.textContent = '—';
         funcValue.removeAttribute('title');
         funcValue.hidden = true;
+        functionOverlay.hidden = true;
         showFunctionBtn.hidden = true;
         showFunctionBtn.textContent = 'Mostrar função';
     }
@@ -385,15 +427,17 @@
 
         analyserVis.getByteTimeDomainData(timeBuffer);
         clearCanvas();
-        drawWaveformWindowed(timeBuffer, '#00ffcc', 2.5, true);
+        if (waveVisible) drawWaveformWindowed(timeBuffer, '#00ffcc', 2.5, true);
 
         animationId = requestAnimationFrame(drawFrame);
     }
 
     function redrawFrozen() {
         clearCanvas();
-        if (frozenFreqData) drawSpectrumOverlay(frozenFreqData, canvas.width, canvas.height);
-        if (frozenTimeData) drawWaveformWindowed(frozenTimeData, '#00ffcc', 2.5, true);
+        if (waveVisible) {
+            if (frozenFreqData) drawSpectrumOverlay(frozenFreqData, canvas.width, canvas.height);
+            if (frozenTimeData) drawWaveformWindowed(frozenTimeData, '#00ffcc', 2.5, true);
+        }
     }
 
     // [3.3] unifica o caminho de desenho
@@ -416,7 +460,7 @@
         if (!analyserVis || !ensureBuffers()) return;
         analyserVis.getByteTimeDomainData(timeBuffer);
         clearCanvas();
-        drawWaveformWindowed(timeBuffer, '#00ffcc', 2.5, true);
+        if (waveVisible) drawWaveformWindowed(timeBuffer, '#00ffcc', 2.5, true);
     }
 
     // ==================== ÁUDIO ====================
@@ -629,9 +673,10 @@
     // [4.10] mostra faixa visível em ms
     function updateZoomLabel() {
         const sr = frozenSampleRate || audioContext?.sampleRate || 44100;
-        const totalMs = frozenTimeData
+        const signalMs = frozenTimeData
             ? (frozenTimeData.length / sr) * 1000
             : (FFT_SIZE / sr) * 1000;
+        const totalMs = Math.min(signalMs, 20);
         const visibleMs = Math.round(totalMs / zoomFactor);
         zoomLevel.textContent = `${zoomFactor.toFixed(1)}× (${visibleMs} ms)`;
 
@@ -666,7 +711,15 @@
     showFunctionBtn.addEventListener('click', () => {
         const showing = !funcValue.hidden;
         funcValue.hidden = showing;
+        functionOverlay.textContent = funcValue.textContent.trim();
+        functionOverlay.hidden = showing;
         showFunctionBtn.textContent = showing ? 'Mostrar função' : 'Ocultar função';
+    });
+    toggleWaveBtn.addEventListener('click', () => {
+        waveVisible = !waveVisible;
+        toggleWaveBtn.textContent = waveVisible ? 'Ocultar onda' : 'Mostrar onda';
+        toggleWaveBtn.setAttribute('aria-pressed', String(!waveVisible));
+        redrawCurrent();
     });
 
     zoomInBtn.addEventListener('click',  () => applyZoom(zoomFactor * ZOOM_STEP, 0.5));

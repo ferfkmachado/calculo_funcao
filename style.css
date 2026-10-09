@@ -139,6 +139,40 @@ button:focus-visible {
     will-change: contents;
 }
 
+.wave-toggle {
+    position: absolute;
+    z-index: 2;
+    top: 14px;
+    left: 14px;
+    padding: 8px 13px;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    background: #071411eF;
+}
+
+.function-overlay {
+    position: absolute;
+    z-index: 1;
+    inset: 50% auto auto 50%;
+    width: min(90%, 1000px);
+    transform: translate(-50%, -50%);
+    padding: clamp(18px, 4vw, 42px);
+    border: 1px solid #00ffcc90;
+    border-left: 8px solid #00ffcc;
+    border-radius: 18px;
+    background: rgba(0, 18, 16, 0.92);
+    box-shadow: 0 0 32px #00ffcc50, inset 0 0 24px #00ffcc12;
+    color: #c0ffff;
+    font-size: clamp(1.4rem, 4.2vw, 3.5rem);
+    font-weight: bold;
+    line-height: 1.35;
+    text-align: center;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+
+.function-overlay[hidden] { display: none; }
+
 canvas#waveCanvas {
     display: block;
     width: 100%;
